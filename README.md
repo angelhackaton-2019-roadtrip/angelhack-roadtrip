@@ -32,6 +32,13 @@ It provides two major interfaces, one on web and one on android and this reposit
 
 The secure components(password, hashing, salt, etc) are partially redacted and thus requires some review before using.
 
+## Running
+
+To run the backend(RESTful) and frontend(with ``express.static`` and basic bootstrap), run:
+``node route.js``
+The other sources are required.
+Note that you must initialize the mongo server on port 8120 by default. You are more than welcome to change the ports, just don't mess yourself up by making it more confusing.
+
 ## License
 
 THE MIT LICENSE
