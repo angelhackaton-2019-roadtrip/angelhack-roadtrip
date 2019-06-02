@@ -1,0 +1,518 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <!-- Required meta tags -->
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+
+    <!-- Bootstrap CSS -->
+    <link rel="stylesheet" href="./css/bootstrap.css">
+    <link rel="stylesheet" href="./css/all.min.css">
+    <link rel="stylesheet" href="./css/bootstrap-datepicker.css">
+    <link rel="stylesheet" href="./css/common.css">
+
+
+
+    <title>로드트립</title>
+    <script>
+        var activeDeparture;
+        var activeArrival;
+        var date;
+        var timeHM;
+        var cost;
+        var state = 'rider';
+        var tag;
+
+        function applyInfo() {
+            $('#departure-label').text(activeDeparture);
+            $('#arrival-label').text(activeArrival);
+            if (date) {
+                $('#date').text((date.getMonth() + 1) + '월 ' + date.getDate() + '일');
+            }
+            if (timeHM) {
+                $('h5#time').text(timeHM);
+            }
+            if (cost) {
+                $('h5#cost').text(cost);
+            }
+            if (tag) {
+                $('h5#tag').text(tag);
+            }
+        }
+
+        function launchModal(option) {
+
+            $('.place-list-item').off('click').click(function () {
+                if (option == 'departure') {
+                    activeDeparture = $(this).data('place');
+                } else if (option == 'arrival') {
+                    activeArrival = $(this).data('place');
+                }
+                if ($('#places-modal').is(':visible')) {
+                    $('#places-modal').modal('hide');
+                }
+                applyInfo();
+            })
+
+            if (option == 'departure') {
+                $('#places-modal .modal-title').text('출발지')
+            } else if (option == 'arrival') {
+                $('#places-modal .modal-title').text('도착지')
+            }
+
+            $('#places-modal').modal({
+                show: true
+            });
+        }
+
+        function launchDatePickerModal() {
+
+            $('#datepicker').datepicker();
+            $('#date-modal').modal({
+                show: true
+            });
+        }
+
+        function launchCostModal() {
+            $('#cost-modal').modal({
+                show: true
+            });
+        }
+
+        function launchTagModal() {
+            $('#tag-modal').modal({
+                show: true
+            });
+        }
+
+        function launchTimeHMPickerModal() {
+            $('#time-hm-modal').modal({
+                show: true
+            });
+        }
+
+        function selectDateModal() {
+            date = new Date($('#datepicker').datepicker('getFormattedDate'));
+            $('#date-modal').modal('hide');
+            applyInfo();
+        }
+
+        function _findDriver() {
+            var $container = $(".ride-cell-list").html("<h3>결과가 없어요 😥</h3>");
+            findDriver(activeDeparture, activeArrival, date, function (response) {
+                if (response.length != 0) {
+                    renderDrivers(response);
+                }
+                $('#driver-modal .modal-title').text(activeDeparture + " - " + activeArrival + (date ? " (" +
+                    (date
+                        .getMonth() + 1) + '월 ' + date.getDate() + '일)' : ""));
+                $('#driver-modal').modal({
+                    show: true
+                });
+            })
+        }
+
+        function _createRide() {
+            // DO not ever do this. Only for PoC. Store it somewhere safe for god's sake.
+            var authkey = "fe09e381419c416fc9eb744fc7a1873204afe420215bc6b94a0bb464f271132a"
+            $.ajax({
+                method: 'POST',
+                url: 'https://roadtrip.esinx.net/api/ride',
+                data: {
+                    'authkey': authkey,
+                    'departure': activeDeparture,
+                    'arrival': activeArrival,
+                    'date': date.setHours(Number(timeHM.split(":")[0])),
+                    'cost': cost,
+                    'tags': tag
+                }
+            }).then(function (response) {
+                console.log(response);
+            }).catch(console.error);
+        }
+
+        function cellGen(info) {
+            var $cell = $('<div>').addClass("ride-cell");
+            var $row1 = $('<div>').addClass("row");
+            info.date = new Date(info.date);
+            var formatText = (info.date.getHours() % 12) + ":00" + (info.date.getHours() > 12 ? "PM" : "AM");
+            var $col1 = $('<div>').addClass("col infocol").append($('<span>').text("출발")).append($('<span>').attr("id",
+                "info").text(formatText));
+            var formatCost = (info.cost.indexOf("원") != -1 ? info.cost : "무료");
+            var $col2 = $('<div>').addClass("col infocol").append($('<span>').text("요금")).append($('<span>').attr("id",
+                "info").text(formatCost));
+            $row1.append($col1).append($col2);
+            var $row2 = $('<div>').addClass("row").css("marginTop", "15px");
+            for (tag of info.tags) {
+                $row2.append($('<span>').addClass("tag").text("#" + tag));
+            }
+            $cell.append($row1).append($row2);
+            $cell.click(function () {
+                window.location.href = '/view.html?rideID=' + info.rideID;
+            })
+            return $cell;
+        }
+
+        function dynamicSort(property) {
+            var sortOrder = 1;
+
+            if (property[0] === "-") {
+                sortOrder = -1;
+                property = property.substr(1);
+            }
+
+            return function (a, b) {
+                if (sortOrder == -1) {
+                    return b[property].localeCompare(a[property]);
+                } else {
+                    return a[property].localeCompare(b[property]);
+                }
+            }
+        }
+
+        function renderDrivers(drivers) {
+            var $container = $(".ride-cell-list").html("");
+            drivers.sort(dynamicSort('date'));
+            for (driver of drivers) {
+                $container.append(cellGen(driver));
+            }
+        }
+
+        function renderRecents() {
+            // DO not ever do this. Only for PoC. Store it somewhere safe for god's sake.
+            var authkey = "fe09e381419c416fc9eb744fc7a1873204afe420215bc6b94a0bb464f271132a"
+            $.ajax({
+                method: "GET",
+                url: "https://roadtrip.esinx.net/api/account/rides?authkey=" + authkey
+            }).done(function (result) {
+                $cells = $("<div>").addClass("maincells");
+                for (k of result.reverse()) {
+                    var $wrap = $("<div>").addClass("maincell-wrapper");
+                    k.date = new Date(k.date);
+                    $wrap.append("<h3>").text(k.departure + " - " + k.arrival + (k.date ? " (" +
+                        (k.date
+                            .getMonth() + 1) + '월 ' + k.date.getDate() + '일)' : ""));
+                    var $cell = cellGen(k);
+                    $cell.data('id', k.rideID);
+                    $cell.off('click').click(function () {
+                        window.location.href = '/view.html?rideID=' + $(this).data('id');
+                    })
+                    $wrap.append($cell);
+                    $cells.append($wrap);
+                }
+                $(".main-menu").append($cells);
+            }).catch(function (error) {
+                console.log(error);
+            })
+
+        }
+
+        function switchState() {
+            if (state == 'rider') {
+                $('#rider').removeClass('active');
+                $('#driver').addClass('active');
+                $('.maincells').fadeOut();
+                $('.time-hm-row').fadeIn();
+                $('.cost-row').fadeIn();
+                $('.tag-row').fadeIn();
+                $('#button-label').text("드라이버 등록하기");
+                state = 'driver';
+            } else {
+                $('#rider').addClass('active');
+                $('#driver').removeClass('active');
+                $('.time-hm-row').fadeOut();
+                $('.cost-row').fadeOut();
+                $('.tag-row').fadeOut();
+                $('.maincells').fadeIn();
+                $('#button-label').text("드라이버 찾기");
+                state = 'rider';
+            }
+        }
+
+        function init() {
+            $('.time-hm-row').hide();
+            $('.cost-row').hide();
+            $('.tag-row').hide();
+            renderRecents();
+        }
+
+        function selectTimeHM() {
+            var value = document.querySelectorAll("input#time-hm")[0].value;
+            // if (value)
+            timeHM = value;
+            $('#time-hm-modal').modal('hide');
+            applyInfo();
+        }
+
+        function selectCostModal() {
+            var value = document.querySelectorAll("input#cost")[0].value;
+            cost = value;
+            $('#cost-modal').modal('hide');
+            applyInfo();
+        }
+
+
+        function selectTagModal() {
+            var value = document.querySelectorAll("input#tag")[0].value;
+            tag = value;
+            $('#tag-modal').modal('hide');
+            applyInfo();
+        }
+
+
+        function bigbuttonAction() {
+            if (state == 'rider') {
+                _findDriver();
+            } else {
+                _createRide();
+            }
+        }
+    </script>
+
+
+</head>
+
+<body onload="init()">
+
+    <div class="container">
+
+        <h1 style="margin-top: 50px;">Roadtrip</h1>
+
+        <nav class="nav nav-pills">
+            <a class="nav-item nav-link active" href="javascript:switchState()" id='rider'>라이더</a>
+            <a class="nav-item nav-link" href="javascript:switchState()" id='driver'>드라이버</a>
+        </nav>
+
+        <div class="main-menu container">
+            <div class="places-row">
+                <div class="places-card" onclick="launchModal('departure')">
+                    <span>출발지</span>
+                    <h3 id="departure-label">--</h3>
+                </div>
+                <div class="places-mid-button align-middle">
+                    <i class="fas fa-arrows-alt-h"></i>
+                </div>
+                <div class="places-card" onclick="launchModal('arrival')">
+                    <span>도착지</span>
+                    <h3 id="arrival-label">--</h3>
+                </div>
+            </div>
+            <div class="time-row">
+                <div class="time-card" onclick="launchDatePickerModal()">
+                    <span id="infolabel">출발 날짜</span>
+                    <h5 id="date">--</h5>
+                </div>
+            </div>
+            <div class="time-hm-row">
+                <div class="time-hm-card" onclick="launchTimeHMPickerModal()">
+                    <span id="infolabel">출발 시간</span>
+                    <h5 id="time">--</h5>
+                </div>
+            </div>
+            <div class="tag-row">
+                <div class="tag-card" onclick="launchTagModal()">
+                    <span id="infolabel">태그(쉼표로 나누기)</span>
+                    <h5 id="tag">--</h5>
+                </div>
+            </div>
+            <div class="cost-row">
+                <div class="cost-card" onclick="launchCostModal()">
+                    <span id="infolabel">요금</span>
+                    <h5 id="cost">--</h5>
+                </div>
+            </div>
+            <div class="action-row">
+                <div class="big-button" onclick="bigbuttonAction()">
+                    <span id="button-label">드라이버 찾기</span>
+                </div>
+            </div>
+
+        </div>
+
+    </div>
+
+    <!-- Modal -->
+    <div class="modal fade" id="places-modal" tabindex="-1" role="dialog">
+        <div class="modal-dialog modal-dialog-centered" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Modal title</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div class="list-group">
+                        <a href="#" class="list-group-item list-group-item-action place-list-item"
+                            data-place="서울">서울</a>
+                        <a href="#" class="list-group-item list-group-item-action place-list-item"
+                            data-place="경기">경기</a>
+                        <a href="#" class="list-group-item list-group-item-action place-list-item"
+                            data-place="인천">인천</a>
+                        <a href="#" class="list-group-item list-group-item-action place-list-item"
+                            data-place="강원">강원</a>
+                        <a href="#" class="list-group-item list-group-item-action place-list-item"
+                            data-place="대전">대전</a>
+                        <a href="#" class="list-group-item list-group-item-action place-list-item"
+                            data-place="전남">전남</a>
+                        <a href="#" class="list-group-item list-group-item-action place-list-item"
+                            data-place="전북">전북</a>
+                        <a href="#" class="list-group-item list-group-item-action place-list-item"
+                            data-place="부산">부산</a>
+                        <a href="#" class="list-group-item list-group-item-action place-list-item"
+                            data-place="대구">대구</a>
+                    </div>
+                </div>
+                <!-- <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">닫기</button>
+                    <button type="button" class="btn btn-primary">선택</button>
+                </div> -->
+            </div>
+        </div>
+    </div>
+
+
+    <!-- Modal -->
+    <div class="modal fade" id="date-modal" tabindex="-1" role="dialog">
+        <div class="modal-dialog modal-dialog-centered" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">출발 날짜</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div id="datepicker"></div>
+                    <input type="hidden" id="my_hidden_input">
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">닫기</button>
+                    <button type="button" class="btn btn-primary" onclick="selectDateModal()">선택</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+
+    <!-- Modal -->
+    <div class="modal fade" id="time-hm-modal" tabindex="-1" role="dialog">
+        <div class="modal-dialog modal-dialog-centered" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">시간</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label for="time-hm">탑승 시간</label>
+                        <input type="text" class="form-control" id="time-hm" placeholder="8:00">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">닫기</button>
+                    <button type="button" class="btn btn-primary" onclick="selectTimeHM()">선택</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal -->
+    <div class="modal fade" id="cost-modal" tabindex="-1" role="dialog">
+        <div class="modal-dialog modal-dialog-centered" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">요금</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label for="cost">요금 및 요구사항</label>
+                        <input type="text" class="form-control" id="cost" placeholder="10000원">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">닫기</button>
+                    <button type="button" class="btn btn-primary" onclick="selectCostModal()">선택</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- Modal -->
+    <div class="modal fade" id="tag-modal" tabindex="-1" role="dialog">
+        <div class="modal-dialog modal-dialog-centered" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">태그</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label for="tag">태그 내용은 쉼표로 나누어주세요</label>
+                        <input type="text" class="form-control" id="tag">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">닫기</button>
+                    <button type="button" class="btn btn-primary" onclick="selectCostModal()">선택</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- Modal -->
+    <div class="modal fade" id="driver-modal" tabindex="-1" role="dialog">
+        <div class="modal-dialog modal-dialog-centered" role="document">
+            <div class="modal-content" style="overflow-y: hidden; background: #f5f5f5">
+                <div class="modal-header" style="background: #5672ff; color:white; border-radius: 0; border:none;">
+                    <h5 class="modal-title"></h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true" style="color:white;">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div class="ride-cell-list">
+                        <h3>결과가 없어요</h3>
+                    </div>
+                </div>
+                <!-- <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">닫기</button>
+                    <button type="button" class="btn btn-primary" onclick="selectDateModal()">선택</button>
+                </div> -->
+            </div>
+        </div>
+    </div>
+
+
+
+    <!-- Optional JavaScript -->
+    <!-- jQuery first, then Popper.js, then Bootstrap JS -->
+    <script src="./js/jquery-3.4.1.min.js">
+    </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.9/umd/popper.min.js"
+        integrity="sha384-ApNbgh9B+Y1QKtv3Rn7W3mgPxhU9K/ScQsAP7hUibX39j7fakFPskvXusvfa0b4Q" crossorigin="anonymous">
+    </script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js"
+        integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl" crossorigin="anonymous">
+    </script>
+
+    <script src="./js/bootstrap-datepicker.js">
+    </script>
+
+    <script src="./js/script.js">
+    </script>
+
+</body>
+
+</html>

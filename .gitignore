@@ -1,0 +1,5 @@
+base/
+cert/
+*.sh
+pid
+node_modules/

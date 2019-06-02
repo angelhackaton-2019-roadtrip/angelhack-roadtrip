@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <!-- Required meta tags -->
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+
+    <!-- Bootstrap CSS -->
+    <link rel="stylesheet" href="./css/bootstrap.css">
+    <link rel="stylesheet" href="./css/all.min.css">
+    <link rel="stylesheet" href="./css/bootstrap-datepicker.css">
+    <link rel="stylesheet" href="./css/common.css">
+    <title>Hello, world!</title>
+    <script>
+        function getQueryVariable(variable) {
+            var query = window.location.search.substring(1);
+            var vars = query.split('&');
+            for (var i = 0; i < vars.length; i++) {
+                var pair = vars[i].split('=');
+                if (decodeURIComponent(pair[0]) == variable) {
+                    return decodeURIComponent(pair[1]);
+                }
+            }
+            console.log('Query variable %s not found', variable);
+        }
+
+        function _join() {
+            // for PoC only, DO NOT USE IT AS WRITTEN
+            const authkey = "d81ca5bf51a15080a6c414fd1af2b11d5bb8d4f9a770fc5a9855891ceda70ccf";
+            join(authkey, getQueryVariable('rideID'), function (res) {
+                if (res.success) {
+                    // alert("합류했습니다!");
+                    window.location.href = "/";
+                }
+            });
+        }
+
+        function syncInfo() {
+            var rideID = getQueryVariable('rideID');
+            $.ajax({
+                method: "GET",
+                url: `https://roadtrip.esinx.net/api/rides/${rideID}`,
+            }).done(function (response) {
+
+                $.ajax({
+                    method: "GET",
+                    url: `https://roadtrip.esinx.net/api/accounts/${response.userID}`
+                }).done(function (driver_account) {
+
+                    var date = new Date(response.date);
+                    $("#infobox-date").text(date.getFullYear() + '년 ' + (date.getMonth() + 1) + '월 ' +
+                        date
+                        .getDate() + '일');
+                    $("#infobox-places").text(response.departure + " / " + response.arrival);
+                    var formatText = (date.getHours() % 12) + ":00" + (date.getHours() > 12 ? "PM" :
+                        "AM");
+                    $("#infobox-time").text(formatText);
+                    $("#infobox-cost").text(response.cost);
+                    $("#infobox-driver").text(driver_account.name);
+                    $("#infobox-platenumber").text(driver_account.driver.platenumber);
+                    $("#infobox-vehicle").text(driver_account.driver.vehicle);
+                    for (tag of response.tags) {
+                        $("#infobox-tags").append($('<span>').addClass("tag").text("#" + tag));
+                    }
+                    $("#infobox-bio").text(driver_account.bio);
+
+                })
+
+            }).catch(function (error) {
+                console.log(error);
+            });
+        }
+    </script>
+
+
+</head>
+
+<body onload="syncInfo()">
+
+    <div class="container">
+
+        <h1 style="margin-top: 50px;">Roadtrip</h1>
+
+        <div class="main-menu container">
+
+            <div class="infobox">
+                <div class="row">
+                    <div class="col-3 infobox-label">
+                        날짜
+                    </div>
+                    <div class="col-9" id="infobox-date">
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-3 infobox-label">
+                        출발/도착
+                    </div>
+                    <div class="col-9" id="infobox-places">
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-3 infobox-label">
+                        출발 시간
+                    </div>
+                    <div class="col-9" id="infobox-time">
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-3 infobox-label">
+                        요금
+                    </div>
+                    <div class="col-9" id="infobox-cost">
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-3 infobox-label">
+                        운전자
+                    </div>
+                    <div class="col-9" id="infobox-driver">
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-3 infobox-label">
+                        차량번호
+                    </div>
+                    <div class="col-9" id="infobox-platenumber">
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-3 infobox-label">
+                        차종
+                    </div>
+                    <div class="col-9" id="infobox-vehicle">
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-3 infobox-label">
+                        태그
+                    </div>
+                    <div class="col-9" id="infobox-tags">
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-3 infobox-label">
+                        소개
+                    </div>
+                    <div class="col-9" id="infobox-bio">
+                    </div>
+                </div>
+            </div>
+
+            <div class="action-row">
+                <div class="big-button" onclick="_join()">
+                    <span id="button-label">선택하기</span>
+                </div>
+            </div>
+
+        </div>
+
+    </div>
+
+    <!-- Optional JavaScript -->
+    <!-- jQuery first, then Popper.js, then Bootstrap JS -->
+    <script src="./js/jquery-3.4.1.min.js">
+    </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.9/umd/popper.min.js"
+        integrity="sha384-ApNbgh9B+Y1QKtv3Rn7W3mgPxhU9K/ScQsAP7hUibX39j7fakFPskvXusvfa0b4Q" crossorigin="anonymous">
+    </script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js"
+        integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl" crossorigin="anonymous">
+    </script>
+
+    <script src="./js/bootstrap-datepicker.js">
+    </script>
+
+    <script src="./js/script.js">
+    </script>
+
+</body>
+
+</html>
