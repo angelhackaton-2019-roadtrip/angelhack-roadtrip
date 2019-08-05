@@ -43,7 +43,7 @@ Note that you must initialize the mongo server on port 8120 by default. You are 
 
 THE MIT LICENSE
 
-Copyright 2019 Eunsoo Shin
+Copyright 2019 Eunsoo Shin (c0ldra1n)
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
 
